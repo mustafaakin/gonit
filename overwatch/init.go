@@ -9,12 +9,9 @@ import (
 
 // Config is general init config file to be parsed from disk upon boot
 type Config struct {
-	version	string
-	title 	string
-	services []struct {
-		name string
-		description string		
-	}
+	Version	string
+	Title 	string
+	Services []Service
 }
 
 func readConfig(filepath string) *Config{

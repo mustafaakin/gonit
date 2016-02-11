@@ -9,10 +9,15 @@ VM_MEMORY=1G
 
 prepare_output_folders:
 	mkdir -p ${BUILD_OUT}/init
+	mkdir -p ${BUILD_OUT}/services
 
 init: prepare_output_folders
 	go build -o ${BUILD_OUT}/init/gonit github.com/mustafaakin/gonit/cmd/init
 
+services: prepare_output_folders
+	go build -o ${BUILD_OUT}/services/networking github.com/mustafaakin/gonit/cmd/networking
+	go build -o ${BUILD_OUT}/services/terminals github.com/mustafaakin/gonit/cmd/terminals
+	
 create_disk:
 	modprobe nbd
 	qemu-img create -f qcow2 ${DISK} 1G
@@ -44,17 +49,22 @@ package: compile
 	mkdir -p ${DISK_MOUNT}/init
 	mkdir -p ${DISK_MOUNT}/init/services
 	
-	# Copy them
+	# Copy required bins
 	cp ${BUILD_OUT}/init/gonit ${DISK_MOUNT}/init/gonit
+	cp ${BUILD_OUT}/services/networking ${DISK_MOUNT}/init/services/networking
+	cp ${BUILD_OUT}/services/terminals  ${DISK_MOUNT}/init/services/terminals
+	
+	# Copy configs
+	cp config.yml ${DISK_MOUNT}/config.yml
 
-compile: init
+compile: init services
 	
 	
 clean:
 	rm -Rf ${BUILD_OUT} 
 					 
 start_vm: clean package
-	# TODO: The following sync and flushbufs needs to be changed, we will just disable cache on our image
+	# TODO: The following sync and flushbufs needs to be changed, we will just disable cache on our image but it seems problematic on rbd?
 	sync
 	blockdev --flushbufs /dev/nbd0p1
 	kvm -m ${VM_MEMORY} -nographic -kernel ${KERNEL} -initrd ${INITRD} -append ${APPEND} -hda ${DISK}
