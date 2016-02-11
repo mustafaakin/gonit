@@ -2,7 +2,7 @@
 KERNEL=/boot/vmlinuz-4.4.0-2-generic
 INITRD=/boot/initrd.img-4.4.0-2-generic
 APPEND="console=ttyS0 root=/dev/sda1 rw init=/init/gonit"
-DISK=/tmp/gonit-disk.img
+DISK=~/gonit-disk.img
 DISK_MOUNT=/tmp/gonit-disk
 BUILD_OUT=/tmp/gonit-build
 VM_MEMORY=1G
@@ -23,17 +23,21 @@ create_disk:
 	mkdir -p ${DISK_MOUNT}
 	mount /dev/nbd0p1 ${DISK_MOUNT}    
 	# Prepare special folders
-	mkdir -p {DISK_MOUNT}/dev
-	mkdir -p {DISK_MOUNT}/proc
-	mkdir -p {DISK_MOUNT}/sys
-	mkdir -p {DISK_MOUNT}/run
+	mkdir -p ${DISK_MOUNT}/dev
+	mkdir -p ${DISK_MOUNT}/proc
+	mkdir -p ${DISK_MOUNT}/sys
+	mkdir -p ${DISK_MOUNT}/run
 
 
 mount_disk:
+	# TODO: Connect to /dev/nbd0
+	modprobe nbd
+	qemu-nbd -c /dev/nbd0 ${DISK}	
 	mount /dev/nbd0p1 ${DISK_MOUNT}   
 	
 umount_disk:
-	umount /tmp/disk   
+	# TODO: Other stuff as disconnecting from /dev/nbd0
+	umount ${DISK_MOUNT}  
 	
 package: compile
 	# Folders, for better readability

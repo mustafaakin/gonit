@@ -1,0 +1,7 @@
+version: 0.1
+title: Gonit based OS
+services:
+  - name: networking
+    description: Configures the networking
+  - name: terminals
+    description: Configures the TTYs for user input

@@ -7,5 +7,5 @@ import (
 
 func main(){
 	overwatch.Bootstrap()
-	// Should never reach here	
+	// Should never reach here, or kernel panics	
 }
