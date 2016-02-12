@@ -1,24 +1,38 @@
 # Makefile for preparing and running gonit binaries
 KERNEL=/boot/vmlinuz-4.4.0-2-generic
 INITRD=/boot/initrd.img-4.4.0-2-generic
-APPEND="console=ttyS0 root=/dev/sda1 rw init=/init/gonit"
+APPEND="console=ttyS0 root=/dev/sda1 rw init=/init/gonit quiet"
 DISK=~/gonit-disk.img
 DISK_MOUNT=/tmp/gonit-disk
 BUILD_OUT=/tmp/gonit-build
 VM_MEMORY=1G
+
+# Colors
+REDCOLOR="\033[31m"
+GREENCOLOR="\033[32m"
+ORANGECOLOR="\033[33m"
+BLUECOLOR="\033[34m"
+BINCOLOR="\033[35m"
+CYANCOLOR="\033[36m"
+ENDCOLOR="\033[0m"
+
+
 
 prepare_output_folders:
 	mkdir -p ${BUILD_OUT}/init
 	mkdir -p ${BUILD_OUT}/services
 
 init: prepare_output_folders
+	@printf '%b %b\n' $(REDCOLOR)COMPILE$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
 	go build -o ${BUILD_OUT}/init/gonit github.com/mustafaakin/gonit/cmd/init
 
 services: prepare_output_folders
-	go build -o ${BUILD_OUT}/services/networking github.com/mustafaakin/gonit/cmd/networking
+	@printf '%b %b\n' $(REDCOLOR)COMPILE$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
+	CGO_ENABLED=0 go build -o ${BUILD_OUT}/services/networking github.com/mustafaakin/gonit/cmd/networking
 	go build -o ${BUILD_OUT}/services/terminals github.com/mustafaakin/gonit/cmd/terminals
 	
 create_disk:
+	@printf '%b %b\n' $(GREENCOLOR)DISK$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
 	modprobe nbd
 	qemu-img create -f qcow2 ${DISK} 1G
 	qemu-nbd -c /dev/nbd0 ${DISK}
@@ -35,16 +49,19 @@ create_disk:
 
 
 mount_disk:
-	# TODO: Connect to /dev/nbd0
+	@printf '%b %b\n' $(GREENCOLOR)DISK$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
 	modprobe nbd
-	qemu-nbd -c /dev/nbd0 ${DISK}	
+	qemu-nbd -c /dev/nbd0 ${DISK}
+	mkdir -p ${DISK_MOUNT}	
 	mount /dev/nbd0p1 ${DISK_MOUNT}   
 	
 umount_disk:
-	# TODO: Other stuff as disconnecting from /dev/nbd0
+	@printf '%b %b\n' $(REDCOLOR)COMPILE$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
+	qemu-nbd -d /dev/nbd0	
 	umount ${DISK_MOUNT}  
 	
 package: compile
+	@printf '%b %b\n' $(BLUECOLOR)PACKAGE$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
 	# Folders, for better readability
 	mkdir -p ${DISK_MOUNT}/init
 	mkdir -p ${DISK_MOUNT}/init/services
@@ -58,15 +75,20 @@ package: compile
 	cp config.yml ${DISK_MOUNT}/config.yml
 
 compile: init services
-	
-	
+		
 clean:
 	rm -Rf ${BUILD_OUT} 
-					 
-start_vm: clean package
-	# TODO: The following sync and flushbufs needs to be changed, we will just disable cache on our image but it seems problematic on rbd?
+
+sync:
 	sync
 	blockdev --flushbufs /dev/nbd0p1
+	blockdev --flushbufs /dev/nbd0
+	sync
+	sleep 2 
+					 
+start_vm: clean package sync
+	@printf '%b %b\n' $(ORANGECOLOR)RUN$(ENDCOLOR) $(BINCOLOR)$@$(ENDCOLOR)
+	# TODO: The following sync and flushbufs needs to be changed, we will just disable cache on our image but it seems problematic on rbd?
 	kvm -m ${VM_MEMORY} -nographic -kernel ${KERNEL} -initrd ${INITRD} -append ${APPEND} -hda ${DISK}
 	
 kill_vm:
